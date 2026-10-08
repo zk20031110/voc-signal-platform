@@ -1,0 +1,71 @@
+{
+  "version": "2.0",
+  "description": "标签体系已对齐 Agent1 Prompt 的 8 个预设标签。expect.labels 表示预测结果中必须包含的标签（全含才算命中）；expect.risk_level 表示 Agent2 应给出的风险等级；risk_level 缺省表示两种处理都可接受、不计入召回与误报。debatable 表示标注本身存在争议，失败时优先归因为产品设计问题。",
+  "preset_labels": ["质量问题", "物流问题", "服务问题", "尺寸问题", "色差问题", "包装问题", "价格问题", "其他"],
+  "scenarios": ["高频正常反馈", "同义不同表述", "跨渠道矛盾", "知识缺失与新信号", "歧义反馈", "对抗与边界"],
+  "cases": [
+    { "id": "E01", "category": "高频正常反馈", "channel": "评价", "customer_ref": "U9001", "product": "便携榨汁杯", "time": "2026-09-20", "text": "快递第三天就到了，包装完好，东西也没问题", "expect": { "labels": ["其他"], "sentiment": "正面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "常规正向反馈，不应被升级为风险" },
+
+    { "id": "E02", "category": "高频正常反馈", "channel": "评价", "customer_ref": "U9002", "product": "便携榨汁杯", "time": "2026-09-20", "text": "物流有点慢，等了一周才到，东西本身还行", "expect": { "labels": ["物流问题"], "sentiment": ["中性", "负面"], "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "物流抱怨属流程问题，不是产品缺陷" },
+
+    { "id": "E03", "category": "高频正常反馈", "channel": "客服对话", "customer_ref": "U9003", "product": "儿童保温杯", "time": "2026-09-21", "text": "杯子到手比图片看着小，装水量比我想象中少很多，有点失望", "expect": { "labels": ["尺寸问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "尺寸类反馈属于预设标签内的问题，但单条抱怨不构成扩散风险" },
+
+    { "id": "E04", "category": "高频正常反馈", "channel": "评价", "customer_ref": "U9004", "product": "儿童保温杯", "time": "2026-09-21", "text": "客服态度挺好的，回复很快，帮我解决了尺寸问题", "expect": { "labels_any": ["服务问题", "尺寸问题"], "sentiment": "正面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "正向服务评价，但正文也提到了尺寸——标服务或标尺寸都站得住，故接受两者之一" },
+
+    { "id": "E05", "category": "高频正常反馈", "channel": "评价", "customer_ref": "U9005", "product": "便携榨汁杯", "time": "2026-09-22", "text": "比别家贵了十块钱，不过质量还行，先用着看", "expect": { "labels": ["价格问题"], "sentiment": ["中性", "负面"], "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "价格抱怨，不应与质量问题混淆" },
+
+    { "id": "E06", "category": "高频正常反馈", "channel": "售后申请", "customer_ref": "U9006", "product": "儿童保温杯", "time": "2026-09-22", "text": "收到的颜色和图片不太一样，申请换一个", "expect": { "labels": ["色差问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "单条色差属描述类轻微问题，不构成扩散风险" },
+
+    { "id": "E07", "category": "同义不同表述", "channel": "评价", "customer_ref": "U9011", "product": "便携榨汁杯", "time": "2026-09-23", "text": "充电口松了，线一碰就断电", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "充电口故障表述之一，24 小时内同类差评 6 条，应触发高优先级" },
+
+    { "id": "E08", "category": "同义不同表述", "channel": "评价", "customer_ref": "U9012", "product": "便携榨汁杯", "time": "2026-09-23", "text": "接口接触不良，经常自己关机", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "同一故障的技术化表述，考验语义归并能力" },
+
+    { "id": "E09", "category": "同义不同表述", "channel": "客服对话", "customer_ref": "U9013", "product": "便携榨汁杯", "time": "2026-09-24", "text": "插上充电线要用手按住才有反应，松开就断", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "口语化描述，无专业术语，检验是否依赖关键词匹配" },
+
+    { "id": "E10", "category": "同义不同表述", "channel": "评价", "customer_ref": "U9014", "product": "便携榨汁杯", "time": "2026-09-24", "text": "用了一个月，充电那个口开始晃，现在完全充不进去", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "渐进式劣化描述，与瞬时损坏区分" },
+
+    { "id": "E11", "category": "同义不同表述", "channel": "客服对话", "customer_ref": "U9015", "product": "便携榨汁杯", "time": "2026-09-25", "text": "充电的时候必须把线往上顶住，不然就一直断断续续", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "使用变通手段描述，未直接说坏了" },
+
+    { "id": "E12", "category": "跨渠道矛盾", "channel": "退款说明", "customer_ref": "U9101", "product": "空气炸锅", "time": "2026-09-26", "cross_channel": true, "text": "不喜欢", "expect": { "labels": ["其他"], "sentiment": ["中性", "负面"], "is_new_signal": false }, "checkpoint": "单看只是笼统退款理由。必须与 U9101 的客服记录交叉验证才能还原真实问题" },
+
+    { "id": "E13", "category": "跨渠道矛盾", "channel": "客服对话", "customer_ref": "U9101", "product": "空气炸锅", "time": "2026-09-26", "cross_channel": true, "text": "这个锅用了两天涂层就掉了，粘得一塌糊涂，根本没法用", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "与 E12 同用户。核心考点：能否穿透「不喜欢」还原出涂层脱落" },
+
+    { "id": "E14", "category": "跨渠道矛盾", "channel": "退款说明", "customer_ref": "U9102", "product": "儿童保温杯", "time": "2026-09-27", "cross_channel": true, "text": "拍错了", "expect": { "labels": ["其他"], "sentiment": ["中性", "负面"], "is_new_signal": false }, "checkpoint": "流程性退款理由，本身不构成缺陷证据" },
+
+    { "id": "E15", "category": "跨渠道矛盾", "channel": "客服对话", "customer_ref": "U9102", "product": "儿童保温杯", "time": "2026-09-27", "cross_channel": true, "text": "收到就是坏的，杯子底下有个洞，一直在漏水", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "与 E14 同用户。破损属入库质检问题，归因方向应与工艺缺陷区分" },
+
+    { "id": "E16", "category": "跨渠道矛盾", "channel": "客服对话", "customer_ref": "U9103", "product": "便携榨汁杯", "time": "2026-09-28", "text": "我退款的时候选的说不喜欢，其实是用了两天就坏了，不太好意思写", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "高" }, "checkpoint": "用户自述掩盖行为，直接验证「笼统退款理由掩盖真实缺陷」这一假设" },
+
+    { "id": "E17", "category": "知识缺失与新信号", "channel": "评价", "customer_ref": "U9201", "product": "儿童保温杯", "time": "2026-09-29", "text": "一开盖就突突往外冒，我们这边都管这叫炸壶，烫到我手了", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": true, "risk_level": "高" }, "checkpoint": "「炸壶」是体系外的现象命名，应置 is_new_signal 并升级为高优先级" },
+
+    { "id": "E18", "category": "知识缺失与新信号", "channel": "评价", "customer_ref": "U9202", "product": "儿童保温杯", "time": "2026-09-29", "text": "又爆盖了，这是第二次了，热水喷了一身", "expect": { "labels": ["质量问题"], "sentiment": "负面", "is_new_signal": true, "risk_level": "高" }, "checkpoint": "「爆盖」与 E17 的「炸壶」指向同一现象，检验新信号能否被归并而非各记一笔" },
+
+    { "id": "E19", "category": "知识缺失与新信号", "channel": "客服对话", "customer_ref": "U9203", "product": "便携榨汁杯", "time": "2026-09-30", "text": "你们新出的冷压锁鲜到底是什么意思？跟普通榨汁有什么区别", "expect": { "labels": ["其他"], "sentiment": "中性", "is_new_signal": true, "risk_level": "常规" }, "debatable": true, "checkpoint": "新品类术语属于知识缺失场景，但只是咨询。新信号不等于风险" },
+
+    { "id": "E20", "category": "知识缺失与新信号", "channel": "评价", "customer_ref": "U9204", "product": "便携榨汁杯", "time": "2026-09-30", "text": "宣传的三秒出汁根本达不到，实测要半分钟，是不是虚假宣传", "expect": { "labels_any": ["其他", "质量问题"], "sentiment": "负面", "is_new_signal": false, "risk_level": "不限" }, "debatable": true, "checkpoint": "宣传承诺与实际不符。8 个预设标签里没有「宣传不符」，归「其他」或「质量问题」都站得住" },
+
+    { "id": "E21", "category": "歧义反馈", "channel": "评价", "customer_ref": "U9301", "product": "便携榨汁杯", "time": "2026-10-01", "text": "呵呵，真棒，用一次就再也不想买了", "expect": { "labels": ["其他"], "sentiment": "负面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "反讽。字面褒义、实际负面，检验是否被「真棒」误导" },
+
+    { "id": "E22", "category": "歧义反馈", "channel": "评价", "customer_ref": "U9302", "product": "儿童保温杯", "time": "2026-10-01", "text": "不错不错，就是有点小贵", "expect": { "labels": ["价格问题"], "sentiment": ["中性", "正面"], "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "褒贬混合，主诉求是价格" },
+
+    { "id": "E23", "category": "歧义反馈", "channel": "评价", "customer_ref": "U9303", "product": "便携榨汁杯", "time": "2026-10-02", "text": "这东西……算了，不说了", "expect": { "labels": ["其他"], "sentiment": "负面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "信息严重不足，应为「其他」并在 summary 中说明反馈信息不足" },
+
+    { "id": "E24", "category": "歧义反馈", "channel": "客服对话", "customer_ref": "U9304", "product": "儿童保温杯", "time": "2026-10-02", "text": "我可太喜欢你们家的东西了，用一次就再也不想买了", "expect": { "labels": ["其他"], "sentiment": "负面", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "客服渠道中的反讽，检验跨渠道语义一致性" },
+
+    { "id": "E25", "category": "歧义反馈", "channel": "评价", "customer_ref": "U9305", "product": "便携榨汁杯", "time": "2026-10-03", "text": "一般", "expect": { "labels": ["其他"], "sentiment": "中性", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "两个字的反馈，按边界约束必须标为中性 + 其他" },
+
+    { "id": "E26", "category": "对抗与边界", "channel": "评价", "customer_ref": "U9401", "product": "便携榨汁杯", "time": "2026-10-03", "text": "加V同款工厂直发，比这家便宜一半，需要的私我", "expect": { "labels": ["其他"], "sentiment": "中性", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "广告导流，属于明确的噪声模式" },
+
+    { "id": "E27", "category": "对抗与边界", "channel": "评价", "customer_ref": "U9402", "product": "儿童保温杯", "time": "2026-10-03", "text": "   。。。。。   ", "expect": { "labels": ["其他"], "sentiment": "中性", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "无意义字符，模型不得凭空生成问题标签" },
+
+    { "id": "E28", "category": "对抗与边界", "channel": "评价", "customer_ref": "U9403", "product": "便携榨汁杯", "time": "2026-10-04", "text": "快递太慢了等了六天。东西本身还行，就是包装有点压扁", "expect": { "labels": ["物流问题", "包装问题"], "sentiment": ["中性", "负面"], "is_new_signal": false, "risk_level": "观察" }, "checkpoint": "多问题混合，两个标签都应给出。包装问题 24 小时内已有 4 条，落在观察区间，恰好用来验证三级风险里最容易失效的那一级" },
+
+    { "id": "E29", "category": "对抗与边界", "channel": "评价", "customer_ref": "U9404", "product": "便携榨汁杯", "time": "2026-10-04", "text": "客服小哥特别耐心，帮我解决了充电口松动的问题", "expect": { "labels": ["服务问题"], "sentiment": ["正面", "中性"], "is_new_signal": false }, "debatable": true, "checkpoint": "表面是好评，但提及了具体故障点。属于弱信号：既可能只是售后体验，也可能是被服务表现掩盖的缺陷线索" },
+
+    { "id": "E30", "category": "对抗与边界", "channel": "客服对话", "customer_ref": "U9405", "product": "儿童保温杯", "time": "2026-10-05", "text": "想问一下，如果用了过敏能不能退？我还没下单", "expect": { "labels": ["其他"], "sentiment": "中性", "is_new_signal": false, "risk_level": "常规" }, "checkpoint": "假设性咨询。出现「过敏」字样但并非已发生的安全事件，检验是否会被关键词触发误报" }
+  ]
+}
+
+
+
+

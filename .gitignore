@@ -1,0 +1,22 @@
+# API 密钥：绝不进版本库
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 评测产物（保留 .gitkeep）
+eval/results/*.json
+
+# 编辑器
+.vscode/
+.idea/
+
+# 人工确认的标签状态（本地产物）
+data/labels.json
+data/reviews.json
+

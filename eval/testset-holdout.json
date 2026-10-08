@@ -1,0 +1,575 @@
+{
+  "version": "1.0",
+  "description": "留出集。与 testset-30 独立：Agent 的 Prompt 里出现的正反例都取自 testset-30，因此那 30 条已经污染，不能自证。本集用完全不同的商品与文本检验规则泛化能力。",
+  "preset_labels": [
+    "质量问题",
+    "物流问题",
+    "服务问题",
+    "尺寸问题",
+    "色差问题",
+    "包装问题",
+    "价格问题",
+    "其他"
+  ],
+  "cases": [
+    {
+      "id": "H01",
+      "category": "高频正常反馈",
+      "channel": "评价",
+      "customer_ref": "V1001",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "刷头换起来很方便，用了半个月牙齿确实干净了",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "正面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "常规正向，不应被升级"
+    },
+    {
+      "id": "H02",
+      "category": "知识缺失与新信号",
+      "channel": "评价",
+      "customer_ref": "V1002",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "用了三天就掉头了，刷头直接从杆子上甩出去，砸到我眼睛上",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": true,
+        "risk_level": "高"
+      },
+      "checkpoint": "「掉头」是可复用的现象名 + 人身伤害，应标新信号并判高"
+    },
+    {
+      "id": "H03",
+      "category": "知识缺失与新信号",
+      "channel": "评价",
+      "customer_ref": "V1003",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "续航衰减太快，标称两个月现在一周就要充一次",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "「续航衰减」被质量问题完整覆盖，不算新信号"
+    },
+    {
+      "id": "H04",
+      "category": "对抗与边界",
+      "channel": "评价",
+      "customer_ref": "V1004",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "找我拿货，同厂同款只要三折，别买贵的",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "站外引流，不是产品概念"
+    },
+    {
+      "id": "H05",
+      "category": "歧义反馈",
+      "channel": "评价",
+      "customer_ref": "V1005",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "感谢商家，用了你们的刷头我牙龈终于不用要了",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "反讽，字面褒义实为负面，且无具体问题指向"
+    },
+    {
+      "id": "H06",
+      "category": "对抗与边界",
+      "channel": "客服对话",
+      "customer_ref": "V1006",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "我想问下，如果刷头断在嘴里能退吗？我还没买",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "假设性咨询，出现「断」字样但非已发生事故，不得触发高风险"
+    },
+    {
+      "id": "H07",
+      "category": "跨渠道矛盾",
+      "channel": "客服对话",
+      "customer_ref": "V1007",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "cross_channel": true,
+      "text": "退款申请我选的买错了，其实是收到就有裂痕，不太好意思写实话",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "用户自述掩盖，真实问题是产品质量"
+    },
+    {
+      "id": "H08",
+      "category": "对抗与边界",
+      "channel": "评价",
+      "customer_ref": "V1008",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "盒子送到时已经压扁了，物流也慢，不过刷子本身还行",
+      "expect": {
+        "labels": [
+          "物流问题",
+          "包装问题"
+        ],
+        "sentiment": [
+          "中性",
+          "负面"
+        ],
+        "is_new_signal": false,
+        "risk_level": "观察"
+      },
+      "checkpoint": "两个标签都要给出。包装问题 24 小时已有 4 条，落在观察区间"
+    },
+    {
+      "id": "H09",
+      "category": "知识缺失与新信号",
+      "channel": "客服对话",
+      "customer_ref": "V1009",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "你们说的脉冲净齿到底怎么调？说明书翻遍了也没找到这个档位",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": true,
+        "risk_level": "常规"
+      },
+      "checkpoint": "「脉冲净齿」是可复用的功能名，算新信号；但只是咨询，不升级风险"
+    },
+    {
+      "id": "H10",
+      "category": "歧义反馈",
+      "channel": "评价",
+      "customer_ref": "V1010",
+      "product": "电动牙刷",
+      "time": "2026-10-06",
+      "text": "就那样吧",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "极短反馈，按边界约束标中性 + 其他"
+    },
+    {
+      "id": "H11",
+      "category": "高频正常反馈",
+      "channel": "评价",
+      "customer_ref": "V1101",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "炸篮涂层均匀，清洗也方便，用了一个月没掉漆",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "正面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "常规正向"
+    },
+    {
+      "id": "H12",
+      "category": "高频正常反馈",
+      "channel": "客服对话",
+      "customer_ref": "V1102",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "这个耳机能同时连两台设备吗？电脑和手机都要用",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "咨询类归其他"
+    },
+    {
+      "id": "H13",
+      "category": "高频正常反馈",
+      "channel": "评价",
+      "customer_ref": "V1103",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "比别家便宜三十块，活动价买的很划算",
+      "expect": {
+        "labels": [
+          "价格问题"
+        ],
+        "sentiment": "正面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "正向价格评价"
+    },
+    {
+      "id": "H14",
+      "category": "高频正常反馈",
+      "channel": "评价",
+      "customer_ref": "V1104",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "充电盒有点大，装口袋不太方便",
+      "expect": {
+        "labels": [
+          "尺寸问题"
+        ],
+        "sentiment": [
+          "中性",
+          "负面"
+        ],
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "尺寸问题24h为0，属孤立抱怨"
+    },
+    {
+      "id": "H15",
+      "category": "高频正常反馈",
+      "channel": "客服对话",
+      "customer_ref": "V1105",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "客服帮我改收货地址改得挺快的，谢谢",
+      "expect": {
+        "labels": [
+          "服务问题"
+        ],
+        "sentiment": "正面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "正向服务评价"
+    },
+    {
+      "id": "H16",
+      "category": "高频正常反馈",
+      "channel": "评价",
+      "customer_ref": "V1106",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "颜色比图片深一些，但不影响使用",
+      "expect": {
+        "labels": [
+          "色差问题"
+        ],
+        "sentiment": [
+          "中性",
+          "负面"
+        ],
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "色差24h为1，常规"
+    },
+    {
+      "id": "H17",
+      "category": "同义不同表述",
+      "channel": "评价",
+      "customer_ref": "V1201",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "炸篮的涂层开始一块块掉，才用了十天",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "涂层脱落表述之一"
+    },
+    {
+      "id": "H18",
+      "category": "同义不同表述",
+      "channel": "客服对话",
+      "customer_ref": "V1202",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "涂层脱落，锅底全是黑点，不敢继续用了",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "同一故障的另一种说法"
+    },
+    {
+      "id": "H19",
+      "category": "同义不同表述",
+      "channel": "评价",
+      "customer_ref": "V1203",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "右耳充不进电了，放回充电盒也不亮灯",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "带电类故障"
+    },
+    {
+      "id": "H20",
+      "category": "同义不同表述",
+      "channel": "客服对话",
+      "customer_ref": "V1204",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "不粘层掉了，煎蛋糊得一塌糊涂",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "口语化描述，无专业术语"
+    },
+    {
+      "id": "H21",
+      "category": "同义不同表述",
+      "channel": "评价",
+      "customer_ref": "V1205",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "左耳直接没声音了，重置也没用",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "功能失效"
+    },
+    {
+      "id": "H22",
+      "category": "跨渠道矛盾",
+      "channel": "退款说明",
+      "customer_ref": "V1301",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "cross_channel": true,
+      "text": "买错了",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": [
+          "中性",
+          "负面"
+        ],
+        "is_new_signal": false
+      },
+      "checkpoint": "笼统退款理由，需与同用户其他渠道交叉验证"
+    },
+    {
+      "id": "H23",
+      "category": "跨渠道矛盾",
+      "channel": "客服对话",
+      "customer_ref": "V1301",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "cross_channel": true,
+      "text": "我不是买错，是用了三天涂层就起了泡，怕不安全才退的",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "与 H22 同用户，真实问题是质量加安全"
+    },
+    {
+      "id": "H24",
+      "category": "跨渠道矛盾",
+      "channel": "退款说明",
+      "customer_ref": "V1302",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "cross_channel": true,
+      "text": "不喜欢",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": [
+          "中性",
+          "负面"
+        ],
+        "is_new_signal": false
+      },
+      "checkpoint": "笼统退款理由"
+    },
+    {
+      "id": "H25",
+      "category": "跨渠道矛盾",
+      "channel": "客服对话",
+      "customer_ref": "V1302",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "cross_channel": true,
+      "text": "右耳一开始就是坏的，从来没有过声音",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "与 H24 同用户，到货即损"
+    },
+    {
+      "id": "H26",
+      "category": "知识缺失与新信号",
+      "channel": "评价",
+      "customer_ref": "V1401",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "用了两天就翻砂了，锅底摸起来像砂纸",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": true,
+        "risk_level": "高"
+      },
+      "checkpoint": "翻砂是可复用的现象名，应标新信号"
+    },
+    {
+      "id": "H27",
+      "category": "知识缺失与新信号",
+      "channel": "客服对话",
+      "customer_ref": "V1402",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "你们说的空间音频到底怎么开？说明书上没找到",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": true,
+        "risk_level": "常规"
+      },
+      "checkpoint": "空间音频是可复用功能名，但只是咨询，不升级风险"
+    },
+    {
+      "id": "H28",
+      "category": "知识缺失与新信号",
+      "channel": "评价",
+      "customer_ref": "V1403",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "不粘锅正常用就掉皮，这也算正常损耗？",
+      "expect": {
+        "labels": [
+          "质量问题"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "高"
+      },
+      "checkpoint": "掉皮被质量问题覆盖，不算新信号"
+    },
+    {
+      "id": "H29",
+      "category": "歧义反馈",
+      "channel": "评价",
+      "customer_ref": "V1501",
+      "product": "蓝牙耳机",
+      "time": "2026-10-07",
+      "text": "买之前朋友都说好，现在我知道他们为什么拼命推荐我买了，谢谢你们给我上了一课",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "负面",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "长句反讽，无具体问题指向"
+    },
+    {
+      "id": "H30",
+      "category": "对抗与边界",
+      "channel": "评价",
+      "customer_ref": "V1502",
+      "product": "空气炸锅",
+      "time": "2026-10-07",
+      "text": "V: abc666 同款厂家直供，半价给你，别买亏了",
+      "expect": {
+        "labels": [
+          "其他"
+        ],
+        "sentiment": "中性",
+        "is_new_signal": false,
+        "risk_level": "常规"
+      },
+      "checkpoint": "站外引流广告"
+    }
+  ]
+}

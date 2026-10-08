@@ -1,0 +1,379 @@
+app:
+  description: 客户声音三 Agent 协作：采集标注 → 风险归因 → 洞察建议。单条反馈演示版。
+  icon: 🛰
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: VOC 信号台
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions: []
+      allowed_file_types:
+      - image
+      - document
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - local_file
+      - remote_url
+    opening_statement: 把一条用户反馈粘进来，我会依次完成标签标注、风险判断与洞察报告。也可以补上历史信号库 JSON，判断会更准。
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 用了两天充电口就松了，根本没法用
+    - 退款原因写的是不喜欢，其实用了两天就坏了
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: llm
+      id: e-start-agent1
+      source: b1f2c3d4-0001-4000-8000-000000000001
+      sourceHandle: source
+      target: b1f2c3d4-0002-4000-8000-000000000002
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: llm
+      id: e-agent1-agent2
+      source: b1f2c3d4-0002-4000-8000-000000000002
+      sourceHandle: source
+      target: b1f2c3d4-0003-4000-8000-000000000003
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: llm
+      id: e-agent2-agent3
+      source: b1f2c3d4-0003-4000-8000-000000000003
+      sourceHandle: source
+      target: b1f2c3d4-0004-4000-8000-000000000004
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: answer
+      id: e-agent3-answer
+      source: b1f2c3d4-0004-4000-8000-000000000004
+      sourceHandle: source
+      target: b1f2c3d4-0005-4000-8000-000000000005
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 一次粘一条用户反馈。历史信号库与跨渠道记录选填，格式见 README。
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 用户反馈
+          max_length: 2048
+          options: []
+          required: true
+          type: paragraph
+          variable: feedback_text
+        - label: 历史信号库（选填 JSON）
+          max_length: 4096
+          options: []
+          required: false
+          type: paragraph
+          variable: history_json
+        - label: 同一用户其他渠道记录（选填 JSON 数组）
+          max_length: 2048
+          options: []
+          required: false
+          type: paragraph
+          variable: cross_channel_json
+      height: 160
+      id: b1f2c3d4-0001-4000-8000-000000000001
+      position:
+        x: 40
+        y: 300
+      positionAbsolute:
+        x: 40
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 单条反馈 → 标签 / 情感 / 实体 / 新信号标记
+        model: &id001
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: b1f2c3d4-0002-4000-8000-000000000002-sys
+          role: system
+          text: |
+            # 角色
+            你是客户声音（VOC）分析系统的第一道工序——信号采集与标注 Agent。你的任务是从非结构化用户反馈中提取关键信息，完成初步分类和打标。
+
+            # 输入
+            你将收到一条来自电商平台的用户反馈，可能来自以下渠道：
+            - 商品评价（好评/中评/差评）
+            - 客服对话记录
+            - 退款/退货说明
+
+            # 任务
+            1. 识别该反馈的核心问题类型，从以下预设标签中选择最匹配的一个或多个：
+               [质量问题, 物流问题, 服务问题, 尺寸问题, 色差问题, 包装问题, 价格问题, 其他]
+            2. 判断情感倾向：正面 / 中性 / 负面
+            3. 提取关键实体：商品名称、订单号（如有）、具体问题描述
+            4. 判断反馈里是否出现了现有标签体系表达不了的关键概念（新的故障现象、新的品类昵称、行业黑话）。必须同时满足两个条件才标记为新信号：
+               条件一：出现的是具体的名词性概念，而不是形容词、程度词或通用描述；
+               条件二：这个概念能被抽成一个可复用的新标签，用来聚合同类反馈。
+               满足时把 is_new_signal 置为 true，并在 suggested_label 中给出建议标签。labels 仍按语义填写最贴近的预设标签，两者可以同时成立。
+               正例：「炸壶」「爆盖」是可复用的现象名，「冷压锁鲜」是可复用的功能名——都算新信号。
+               反例：「接触不良」「充电口松动」已被「质量问题」完整覆盖，不算新信号；「虚假宣传」「广告引流」不是产品概念，也不算新信号。
+
+            # 输出格式（严格按JSON输出）
+            {
+              "channel": "评价/客服/退款",
+              "sentiment": "正面/中性/负面",
+              "labels": ["标签1", "标签2"],
+              "entities": {
+                "product": "商品名称",
+                "order_id": "订单号（如无则填null）"
+              },
+              "summary": "用一句话概括该反馈的核心内容",
+              "is_new_signal": true/false,
+              "suggested_label": "如果是新信号，给出建议标签；否则填null"
+            }
+
+            # 边界约束
+            - 不要编造输入中不存在的信息。如果订单号缺失，填null。
+            - 如果反馈内容过于模糊（如"还行""一般"），标注为"中性"，标签选"其他"，并在summary中说明"反馈信息不足"。
+            - 你只负责标注，不做风险判断，不生成行动建议。
+            - 反讽、双关要按真实语义判断，不要只看字面褒贬。「呵呵，真棒，用一次就再也不想买了」是负面，不是正面。
+            - 用户只是在提问或询问政策（问题尚未发生，如"如果过敏能不能退"）时，标签选"其他"，不要判成"服务问题"。
+            - 只表达情绪、没有具体问题指向的反馈（含反讽），标签选"其他"。
+            - 注意否定句与条件句：「用了一个月没掉漆」「目前没发现问题」是对产品的正面描述，不要因为句子里出现了「掉漆」「问题」这类词就判成质量问题。先判断这句话是在肯定问题还是在否定问题。
+            - 说明性、陈述性的句子同理：「正常用就掉皮，这也算正常？」的重点是掉皮；「涂层均匀，没掉漆」的重点是没掉漆。
+            - 输出必须是可直接解析的合法 JSON：字符串内部不要使用英文双引号，需要引用原文时改用中文引号「」。
+        - id: b1f2c3d4-0002-4000-8000-000000000002-usr
+          role: user
+          text: '{{#b1f2c3d4-0001-4000-8000-000000000001.feedback_text#}}'
+        selected: false
+        title: 01 信号采集与标注
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: b1f2c3d4-0002-4000-8000-000000000002
+      position:
+        x: 340
+        y: 300
+      positionAbsolute:
+        x: 340
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 结合历史信号库与跨渠道记录，判断风险等级并归因
+        model: *id001
+        prompt_template:
+        - id: b1f2c3d4-0003-4000-8000-000000000003-sys
+          role: system
+          text: |
+            # 角色
+            你是客户声音（VOC）分析系统的第二道工序——风险识别与归因 Agent。你的任务是接收已标注的反馈卡，判断该信号是"偶发噪声"还是"正在扩散的风险"，并给出归因分析。
+
+            # 输入
+            你将收到一个JSON格式的反馈卡，包含渠道、情感、标签、实体和摘要。
+            同时，你会收到一个"历史信号库"，包含过去7天内同类标签的反馈数量和情感分布。
+            你会收到该用户在其他渠道的历史反馈记录。若存在跨渠道记录，请交叉验证说法是否一致。
+
+            # 任务
+            1. 判断该信号的风险等级。数量依据取历史信号库中对应标签的 negative_24h 字段；一条反馈有多个标签时，取其中的最大值，不要相加：
+               - 🔴 高优先级：涉及安全、健康、品牌声誉，或 negative_24h ≥ 5
+               - 🟡 观察：negative_24h 为 3 到 4，已出现聚集迹象但尚未达到高优先级门槛
+               - 🟢 常规：正面或中性反馈，或 negative_24h ≤ 2 的孤立负面反馈
+            2. 给出归因分析：该信号最可能的原因是什么？是产品缺陷、物流问题、服务问题，还是用户预期偏差？
+            3. 如果风险等级为🔴，说明是否需要立即通知人工复核，并给出理由。
+
+            # 输出格式（严格按JSON输出）
+            {
+              "risk_level": "高/观察/常规",
+              "risk_reason": "判断依据，引用输入中的具体信息",
+              "attribution": "归因分析，说明最可能的原因",
+              "need_human_review": true/false,
+              "review_reason": "如需人工复核，说明理由；否则填null"
+            }
+
+            # 边界约束
+            - 你的判断必须基于输入中的信息，不能凭空推测。
+            - 如果信息不足以判断风险等级，默认标为"观察"，并说明"信息不足，建议持续监控"。
+            - 你不负责生成行动建议，只负责风险判断和归因。
+            - 高风险信号（涉及安全/健康/品牌声誉）必须标记 need_human_review=true。
+            - 如果该用户在其他渠道的说法与本条矛盾，以包含具体事实描述的一方为准，并在归因分析中说明这一差异。
+            - 输出必须是可直接解析的合法 JSON：字符串内部不要使用英文双引号，需要引用原文时改用中文引号「」。
+        - id: b1f2c3d4-0003-4000-8000-000000000003-usr
+          role: user
+          text: |-
+            【反馈卡】
+            {{#b1f2c3d4-0002-4000-8000-000000000002.text#}}
+
+            【历史信号库】
+            {{#b1f2c3d4-0001-4000-8000-000000000001.history_json#}}
+
+            【该用户在其他渠道的历史反馈记录】
+            {{#b1f2c3d4-0001-4000-8000-000000000001.cross_channel_json#}}
+        selected: false
+        title: 02 风险识别与归因
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: b1f2c3d4-0003-4000-8000-000000000003
+      position:
+        x: 640
+        y: 300
+      positionAbsolute:
+        x: 640
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 生成 Markdown 洞察报告与行动建议，证据链带语料编号
+        model: *id001
+        prompt_template:
+        - id: b1f2c3d4-0004-4000-8000-000000000004-sys
+          role: system
+          text: |
+            # 角色
+            你是客户声音（VOC）分析系统的第三道工序——洞察生成与行动建议 Agent。你的任务是接收风险识别结果，生成结构化的洞察报告和可执行的行动建议。
+
+            # 输入
+            你将收到一个JSON格式的风险识别结果，包含风险等级、归因分析、是否需要人工复核。
+            同时，你会收到过去7天的历史信号统计（如各标签的反馈数量、情感分布、趋势变化）。
+
+            # 任务
+            1. 生成一份简明的洞察报告，包含：
+               - 核心发现（1-2句话）
+               - 证据链（基于多少条语料、来自哪些渠道、原始文本示例）
+               - 趋势判断（该问题是上升、持平还是下降）
+            2. 给出可执行的行动建议，按优先级排序，每条建议必须附带：
+               - 建议内容
+               - 优先级（高/中/低）
+               - 预期效果（如"预计减少同类差评20%"）
+            3. 如果风险等级为🔴，在报告开头标注"⚠️ 需立即关注"。
+
+            # 输出格式（严格按Markdown输出）
+            ## 洞察报告
+            **核心发现**：...
+            **证据链**：
+            - 语料数量：X条
+            - 来源渠道：评价/客服/退款
+            - 语料编号：F001, F002
+            - 原始文本示例："..."
+            **趋势判断**：上升/持平/下降
+
+            ## 行动建议
+            | 优先级 | 建议内容 | 预期效果 |
+            | :--- | :--- | :--- |
+            | 高 | ... | ... |
+            | 中 | ... | ... |
+
+            # 边界约束
+            - 每一条结论必须有输入数据支撑，不能凭空编造。
+            - 行动建议必须是商家可执行的（如"检查某批次商品质量""优化某物流线路"），而不是空泛的"提升质量"。
+            - 你不做任何自动执行操作，只生成建议，由商家决定是否采纳。
+        - id: b1f2c3d4-0004-4000-8000-000000000004-usr
+          role: user
+          text: |-
+            【风险识别结果】
+            {{#b1f2c3d4-0003-4000-8000-000000000003.text#}}
+
+            【过去7天历史信号统计】
+            {{#b1f2c3d4-0001-4000-8000-000000000001.history_json#}}
+        selected: false
+        title: 03 洞察生成与行动建议
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: b1f2c3d4-0004-4000-8000-000000000004
+      position:
+        x: 940
+        y: 300
+      positionAbsolute:
+        x: 940
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        answer: '{{#b1f2c3d4-0004-4000-8000-000000000004.text#}}'
+        desc: ''
+        selected: false
+        title: 输出报告
+        type: answer
+        variables: []
+      height: 98
+      id: b1f2c3d4-0005-4000-8000-000000000005
+      position:
+        x: 1240
+        y: 300
+      positionAbsolute:
+        x: 1240
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

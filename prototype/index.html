@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VOC 信号台 · 客户声音智能分析平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="console">
+  <div class="brand">
+    <span class="brand-mark">◉</span>
+    <div class="brand-text">
+      <h1>VOC 信号台</h1>
+      <p>客户声音智能分析平台 · 三 Agent 协作</p>
+    </div>
+  </div>
+
+  <div class="stage-leds" id="stageLeds">
+    <div class="led" data-stage="agent1">
+      <span class="led-dot"></span>
+      <span class="led-label">01 采集标注</span>
+      <span class="led-time" data-time="agent1">—</span>
+    </div>
+    <div class="led-line"></div>
+    <div class="led" data-stage="agent2">
+      <span class="led-dot"></span>
+      <span class="led-label">02 风险归因</span>
+      <span class="led-time" data-time="agent2">—</span>
+    </div>
+    <div class="led-line"></div>
+    <div class="led" data-stage="agent3">
+      <span class="led-dot"></span>
+      <span class="led-label">03 洞察建议</span>
+      <span class="led-time" data-time="agent3">—</span>
+    </div>
+  </div>
+
+  <div class="console-actions">
+    <span class="model-tag" id="modelTag">deepseek-flash</span>
+    <label class="mode-switch" title="Agent1 输入形态：逐条更稳，批量更省调用次数（对不齐会自动回退逐条）">
+      <span class="mode-switch-label">Agent1</span>
+      <select id="agent1ModeSel">
+        <option value="single">逐条（默认）</option>
+        <option value="batch">批量（省调用）</option>
+      </select>
+    </label>
+    <button id="runBtn" class="btn btn-run">
+      <span class="btn-glyph">▶</span><span class="btn-text">采集并分析</span>
+    </button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab is-active" data-view="workbench">分析工作台</button>
+  <button class="tab" data-view="eval">评测看板</button>
+  <button class="tab" data-view="labels">标签体系</button>
+  <button class="tab" data-view="review">人工复核</button>
+</nav>
+
+<main>
+  <!-- ============ 工作台 ============ -->
+  <section class="view is-active" id="view-workbench">
+    <div class="workbench">
+
+      <div class="col col-source">
+        <div class="col-head">
+          <h2>反馈源</h2>
+        </div>
+        <div class="batch-picker" id="batchPicker"></div>
+        <div class="source-list" id="sourceList">
+          <div class="placeholder">选择一个批次后点击「采集并分析」</div>
+        </div>
+      </div>
+
+      <div class="col col-pipeline">
+        <div class="col-head">
+          <h2>协作流水线</h2>
+        </div>
+        <div class="agent-stack" id="agentStack"></div>
+      </div>
+
+      <div class="col col-verdict">
+        <div class="col-head">
+          <h2>结论与证据</h2>
+        </div>
+        <div class="verdict-body" id="verdictBody">
+          <div class="placeholder">等待流水线输出</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 评测看板 ============ -->
+  <section class="view" id="view-eval">
+    <div class="eval-head">
+      <div>
+        <h2>评测看板</h2>
+      </div>
+      <button id="runEvalBtn" class="btn btn-eval"><span class="btn-glyph">▶</span><span class="btn-text">运行评测</span></button>
+    </div>
+
+    <div class="metric-grid" id="metricGrid">
+      <div class="placeholder wide">点击「运行评测」后生成分层指标</div>
+    </div>
+
+    <div class="eval-lower">
+      <div class="panel">
+        <div class="panel-head"><h3>用例逐条判定</h3><span class="panel-sub" id="caseSub">—</span></div>
+        <div class="case-table-wrap"><table class="case-table" id="caseTable"><tbody><tr><td class="placeholder">尚未运行</td></tr></tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Badcase 归因</h3></div>
+        <div class="bucket-list" id="bucketList"><div class="placeholder">尚未运行</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 标签体系 ============ -->
+  <section class="view" id="view-labels">
+    <div class="eval-head">
+      <div>
+        <h2>标签体系演化</h2>
+      </div>
+      <button id="reloadLabelsBtn" class="btn btn-eval" style="background:none; color:var(--amber); border:1px solid rgba(229,160,60,.5)"><span class="btn-glyph">↻</span><span class="btn-text">刷新</span></button>
+    </div>
+
+    <div class="eval-lower">
+      <div class="panel">
+        <div class="panel-head"><h3>候选新标签</h3><span class="panel-sub" id="candSub">—</span></div>
+        <div class="bucket-list" id="candidateList">
+          <div class="placeholder">跑一次分析后，这里会汇总体系外的新概念</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>已生效标签</h3><span class="panel-sub" id="confirmedSub">—</span></div>
+        <div class="bucket-list" id="confirmedList">
+          <div class="placeholder">尚未确认任何自定义标签</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 人工复核 ============ -->
+  <section class="view" id="view-review">
+    <div class="eval-head">
+      <div>
+        <h2>人工复核工作台</h2>
+      </div>
+      <button id="reloadReviewsBtn" class="btn btn-eval" style="background:none; color:var(--amber); border:1px solid rgba(229,160,60,.5)"><span class="btn-glyph">↻</span><span class="btn-text">刷新</span></button>
+    </div>
+
+    <div class="eval-lower">
+      <div class="panel">
+        <div class="panel-head"><h3>待复核</h3><span class="panel-sub" id="pendingSub">—</span></div>
+        <div class="bucket-list" id="pendingList">
+          <div class="placeholder">跑一次分析后，需要人工确认的高风险信号会出现在这里</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>复核历史（已回流）</h3><span class="panel-sub" id="historySub">—</span></div>
+        <div class="bucket-list" id="historyList">
+          <div class="placeholder">还没有复核记录</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="data.js"></script>
+<script src="pipeline.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
