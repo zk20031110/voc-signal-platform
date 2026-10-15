@@ -83,6 +83,30 @@
     return VOC_DATA.batches.find((b) => b.id === state.batchId);
   }
 
+  function renderOverview() {
+    const batch = currentBatch();
+    if (!batch) return;
+    const records = batch.feedbacks || [];
+    const channels = new Set(records.map((item) => item.channel).filter(Boolean));
+    const customers = new Set(records.map((item) => item.customer_ref).filter(Boolean));
+    const highGroups = ((state.result && state.result.groups) || []).filter((group) => group.risk_level === "高");
+    const status = state.running ? ["分析中", "running"]
+      : state.result && state.result.errors && state.result.errors.length ? ["需检查", "error"]
+      : state.result ? ["已完成", "done"] : ["待分析", "idle"];
+    const setText = (id, value) => { const node = $(id); if (node) node.textContent = value; };
+    setText("#summaryBatchName", batch.name);
+    setText("#summaryRange", batch.scope);
+    setText("#summaryFeedback", String(records.length).padStart(2, "0"));
+    setText("#summaryChannels", String(channels.size).padStart(2, "0"));
+    setText("#summaryCustomers", String(customers.size).padStart(2, "0"));
+    setText("#summaryRisk", state.result ? String(highGroups.length) + " 组" : "待运行");
+    const statusNode = $("#summaryStatus");
+    if (statusNode) {
+      statusNode.textContent = status[0];
+      statusNode.dataset.state = status[1];
+    }
+  }
+
   function labelChip(label, extra) {
     const color = VOC_DATA.labelColors[label] || "#7C8479";
     return `<span class="lb" style="--lb:${color}">${esc(label)}${extra ? `<i>${esc(extra)}</i>` : ""}</span>`;
@@ -335,6 +359,7 @@
   async function runPipeline(demoMode) {
     if (state.running) return;
     state.running = true;
+    renderOverview();
     const btn = $("#runBtn");
     const demoBtn = $("#demoBtn");
     btn.disabled = true;
@@ -348,6 +373,7 @@
     }
     state.result = null;
     state.index = {};
+    renderOverview();
     const statuses = {};
     ["agent1", "agent2", "agent3"].forEach((s) => { statuses[s] = { status: "idle" }; setLed(s, "idle"); });
     renderSourceList();
@@ -380,6 +406,7 @@
         }
       });
     } catch (e) {
+      state.result = { errors: [{ message: e.message }] };
       $("#verdictBody").innerHTML = `<div class="placeholder err">运行失败：${esc(e.message)}</div>`;
     } finally {
       state.running = false;
@@ -387,6 +414,7 @@
       $(".btn-text", btn).textContent = "采集并分析";
       if (demoBtn) demoBtn.disabled = false;
       if (window.VOC_LAST_MODEL) $("#modelTag").textContent = window.VOC_LAST_MODEL;
+      renderOverview();
     }
   }
 
@@ -823,6 +851,7 @@
       state.result = null;
       state.index = {};
       renderBatchPicker();
+      renderOverview();
       renderSourceList();
       renderAgentStack({});
       $("#verdictBody").innerHTML = '<div class="placeholder">等待流水线输出</div>';
@@ -887,6 +916,7 @@
   }
 
   renderBatchPicker();
+  renderOverview();
   renderSourceList();
   renderAgentStack({});
   loadLabels();

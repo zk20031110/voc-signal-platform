@@ -14,7 +14,7 @@
     <span class="brand-mark">◉</span>
     <div class="brand-text">
       <h1>VOC 信号台</h1>
-      <p>客户声音智能分析平台 · 三 Agent 协作</p>
+      <p>CUSTOMER INTELLIGENCE · EVIDENCE FIRST</p>
     </div>
   </div>
 
@@ -63,6 +63,26 @@
 <main>
   <!-- ============ 工作台 ============ -->
   <section class="view is-active" id="view-workbench">
+    <section class="overview" aria-labelledby="overviewTitle">
+      <div class="overview-copy">
+        <span class="eyebrow">CUSTOMER SIGNALS / WORKSPACE</span>
+        <h2 id="overviewTitle">把分散反馈，变成可复核的行动信号。</h2>
+        <p>跨渠道汇总用户声音，识别风险与趋势；每条结论都能回到原始证据，交由团队判断下一步。</p>
+        <div class="overview-context">
+          <span class="context-label">当前批次</span>
+          <strong id="summaryBatchName">便携榨汁杯</strong>
+          <span id="summaryRange">近 5 天 · 3 个渠道</span>
+          <span class="summary-status" id="summaryStatus" data-state="idle">待分析</span>
+        </div>
+      </div>
+      <div class="overview-metrics" aria-live="polite">
+        <article class="overview-metric"><span>反馈记录</span><strong id="summaryFeedback">—</strong><small>本批次原始语料</small></article>
+        <article class="overview-metric"><span>反馈渠道</span><strong id="summaryChannels">—</strong><small>跨渠道统一观察</small></article>
+        <article class="overview-metric"><span>关联用户</span><strong id="summaryCustomers">—</strong><small>基于用户标识去重</small></article>
+        <article class="overview-metric metric-risk"><span>高优先级分组</span><strong id="summaryRisk">待运行</strong><small>结果生成后显示复核组数</small></article>
+      </div>
+    </section>
+
     <div class="workbench">
 
       <div class="col col-source">
