@@ -491,6 +491,61 @@ window.VOC_PIPELINE = (function () {
     return out;
   }
 
+  /** 无密钥的固定样例演示：展示页面交互，不调用模型、不写入持久化数据。 */
+  async function runDemoPipeline(batch, onStage) {
+    const emit = onStage || function () {};
+    const out = { batch: batch.id, demo: true, agent1: null, agent2: null, groups: [], agent3: null, errors: [] };
+    const annotationById = {
+      F001: { labels: ["质量问题"], sentiment: "负面", summary: "使用两天后充电口松动、接触不稳", is_new_signal: false },
+      F002: { labels: ["质量问题"], sentiment: "负面", summary: "使用两天后无法充电，并询问退款", is_new_signal: false },
+      F003: { labels: ["其他"], sentiment: "负面", summary: "退款原因只写“不喜欢”，与其他渠道描述存在差异", is_new_signal: false },
+      F004: { labels: ["质量问题"], sentiment: "负面", summary: "使用一周内充电口松动、晃动断电", is_new_signal: false },
+      F005: { labels: ["质量问题", "服务问题"], sentiment: "负面", summary: "第三天无法充电，客服建议自行联系厂家", is_new_signal: false },
+      F006: { labels: ["其他"], sentiment: "正面", summary: "认可榨汁效果，对运行声音表示可接受", is_new_signal: false },
+      F007: { labels: ["质量问题"], sentiment: "负面", summary: "复购后再次遇到充电口松动，怀疑问题重复出现", is_new_signal: false },
+      F008: { labels: ["物流问题"], sentiment: "负面", summary: "等待六天才送达，商品尚未拆封", is_new_signal: false },
+      F009: { labels: ["其他"], sentiment: "正面", summary: "认可榨汁效果和性价比，并愿意推荐", is_new_signal: false }
+    };
+    const riskById = {
+      F001: { risk_level: "高", risk_reason: "过去 24 小时质量类负面反馈已达 6 条，达到高优先级阈值。", attribution: "多名用户集中提到充电口松动或断连，问题出现在使用早期。", need_human_review: true, review_reason: "涉及商品质量风险，确认后再推动批次排查" },
+      F002: { risk_level: "高", risk_reason: "与同商品多条早期充电故障反馈相互印证。", attribution: "客服对话补充了评价中未包含的退款诉求。", need_human_review: true, review_reason: "需核对订单与售后处理记录" },
+      F003: { risk_level: "观察", risk_reason: "退款说明仅写“不喜欢”，但同一用户的评价和客服记录都提到充电故障。", attribution: "退款原因与其他渠道记录不一致，现有文本不足以确认实际退款原因。", need_human_review: true, review_reason: "建议人工核对订单及退款原因" },
+      F004: { risk_level: "高", risk_reason: "充电口松动与断电现象和其他用户反馈相似。", attribution: "多个用户独立描述相近的使用早期故障。", need_human_review: true, review_reason: "需确认故障是否集中于特定商品批次" },
+      F005: { risk_level: "高", risk_reason: "第三天无法充电，进一步支持早期故障信号。", attribution: "除商品问题外，客服转介方式也带来服务体验风险。", need_human_review: true, review_reason: "核实产品故障并跟进售后转介流程" },
+      F006: { risk_level: "常规", risk_reason: "正向评价为主，声音问题明确表示可以接受。", attribution: "未发现需要升级的商品问题信号。", need_human_review: false },
+      F007: { risk_level: "高", risk_reason: "复购用户再次反馈充电口松动，出现重复问题线索。", attribution: "同一用户前后购买记录提示可能存在复现，需结合订单核验。", need_human_review: true, review_reason: "建议核对前后订单及商品信息" },
+      F008: { risk_level: "常规", risk_reason: "仅有单条物流时效反馈，商品尚未拆封。", attribution: "暂不足以判断商品质量问题或物流趋势扩散。", need_human_review: false },
+      F009: { risk_level: "常规", risk_reason: "正向评价，未发现风险信号。", attribution: "用户认可商品效果与性价比。", need_human_review: false }
+    };
+
+    emit("agent1", "running", { done: 0, total: batch.feedbacks.length });
+    const cards = batch.feedbacks.map((feedback) => Object.assign({}, annotationById[feedback.id], {
+      feedback_id: feedback.id,
+      customer_ref: feedback.customer_ref
+    }));
+    emit("agent1", "done", { cards, errors: [], ms: null, calls: 0, mode: "demo", demo: true });
+    out.agent1 = { cards, errors: [], ms: null, calls: 0, mode: "demo", demo: true };
+
+    emit("agent2", "running", { done: 0, total: cards.length });
+    const risks = batch.feedbacks.map((feedback) => Object.assign({ feedback_id: feedback.id }, riskById[feedback.id]));
+    emit("agent2", "done", { risks, errors: [], ms: null, demo: true });
+    out.agent2 = { risks, errors: [], ms: null, demo: true };
+    out.groups = aggregate(cards, risks, batch.feedbacks);
+
+    emit("agent3", "running", { done: 0, total: out.groups.filter((g) => g.risk_level === "高" || g.risk_level === "观察").length });
+    const reports = out.groups
+      .filter((group) => group.risk_level === "高" || group.risk_level === "观察")
+      .map((group) => ({
+        group,
+        markdown: group.primary_label === "质量问题"
+          ? `### 发现\n多名用户在使用早期反馈充电口松动或无法充电，且历史信号显示质量类负面反馈近期上升。建议先核对相关订单、商品批次与售后记录，再决定是否扩大排查。\n\n### 处理建议\n1. 人工抽查相关订单和退换货记录，确认问题是否集中在特定商品批次。\n2. 汇总核验后的故障描述与证据，交由商品质量负责人跟进。\n3. 修复或确认原因后，持续观察后续反馈量变化。\n\n### 证据\n语料编号：${group.feedback_ids.join(", ")}`
+          : `### 发现\n同一用户的退款说明与评价、客服记录描述不一致，现有证据不足以判定退款的真实原因。\n\n### 处理建议\n先人工核对订单与退款记录，再决定是否将该反馈并入充电故障信号。\n\n### 证据\n语料编号：${group.feedback_ids.join(", ")}`
+      }));
+    out.agent3 = { reports, errors: [], ms: null, demo: true };
+    emit("agent3", "done", out.agent3);
+    return out;
+  }
+
   /** 从 Agent3 的 Markdown 里解析「语料编号：F001, F002」，用于证据下钻 */
   function parseEvidenceIds(markdown) {
     const m = String(markdown || "").match(/语料编号[：:]\s*([^\n]+)/);
@@ -499,7 +554,7 @@ window.VOC_PIPELINE = (function () {
     return m[1].match(/[A-Za-z]{1,3}\d+/g) || [];
   }
 
-  return { runPipeline, extractJSON, parseEvidenceIds, aggregate, alignBatchResults, loadCustomLabels, loadReviews };
+  return { runPipeline, runDemoPipeline, extractJSON, parseEvidenceIds, aggregate, alignBatchResults, loadCustomLabels, loadReviews };
 })();
 
 

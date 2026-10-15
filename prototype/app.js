@@ -166,16 +166,18 @@
       const news = cards.filter((c) => c.is_new_signal).length;
       const injL = (window.VOC_INJECT && window.VOC_INJECT.labels) || 0;
       const modeTxt = s.mode === "batch" ? "批量调用" : "逐条调用";
-      const costTxt = s.calls
-        ? `　${modeTxt} ${s.calls} 次模型调用${s.fallbacks ? `（回退 ${s.fallbacks} 批）` : ""}`
-        : "";
+      const costTxt = s.demo
+        ? "　离线固定样例，无模型调用"
+        : s.calls
+          ? `　${modeTxt} ${s.calls} 次模型调用${s.fallbacks ? `（回退 ${s.fallbacks} 批）` : ""}`
+          : "";
       return `
         <div class="agent-role">已标注 ${cards.length} 条反馈${s.errors && s.errors.length ? `，失败 ${s.errors.length} 条` : ""}。${costTxt}</div>
         ${injL ? `<div class="agent-role" style="color:var(--amber)">已注入人工确认的自定义标签：${injL} 个</div>` : ""}
         <div class="stat-row">
           <div class="stat"><span class="stat-v">${cards.length}</span><span class="stat-k">已标注</span></div>
           <div class="stat"><span class="stat-v">${news}</span><span class="stat-k">新信号</span></div>
-          <div class="stat"><span class="stat-v">${(s.ms / 1000).toFixed(1)}s</span><span class="stat-k">耗时</span></div>
+          <div class="stat"><span class="stat-v">${s.demo ? "—" : (s.ms / 1000).toFixed(1) + "s"}</span><span class="stat-k">${s.demo ? "真实耗时" : "耗时"}</span></div>
         </div>
         <div class="chip-wrap">${Object.keys(dist).sort((a, b) => dist[b] - dist[a]).map((l) => labelChip(l, dist[l])).join("")}</div>`;
     }
@@ -190,7 +192,7 @@
         ? `<div class="agent-role" style="color:var(--amber)">已注入人工复核结论：确认 ${injR.confirmed} 条 / 误报 ${injR.rejected} 条</div>`
         : "";
       return `
-        <div class="agent-role">逐条完成风险判断${s.errors && s.errors.length ? `，失败 ${s.errors.length} 条` : ""}。</div>
+        <div class="agent-role">${s.demo ? "固定样例结果，用于查看风险分级和人工复核交互。" : `逐条完成风险判断${s.errors && s.errors.length ? `，失败 ${s.errors.length} 条` : ""}。`}</div>
         ${injLine}
         <div class="stat-row">
           <div class="stat is-high"><span class="stat-v">${lv["高"]}</span><span class="stat-k">🔴 高优先级</span></div>
@@ -202,10 +204,10 @@
 
     const reports = (s.reports || []);
     return `
-      <div class="agent-role">按「风险等级 + 主标签」聚合后生成 ${reports.length} 份洞察报告。</div>
+      <div class="agent-role">${s.demo ? "固定样例报告，用于查看证据回溯与建议展示。" : `按「风险等级 + 主标签」聚合后生成 ${reports.length} 份洞察报告。`}</div>
       <div class="stat-row">
         <div class="stat"><span class="stat-v">${reports.length}</span><span class="stat-k">报告数</span></div>
-        <div class="stat"><span class="stat-v">${(s.ms / 1000).toFixed(1)}s</span><span class="stat-k">耗时</span></div>
+        <div class="stat"><span class="stat-v">${s.demo ? "—" : (s.ms / 1000).toFixed(1) + "s"}</span><span class="stat-k">${s.demo ? "真实耗时" : "耗时"}</span></div>
       </div>`;
   }
 
@@ -272,6 +274,10 @@
     const high = groups.filter((g) => g.risk_level === "高");
     let html = "";
 
+    if (r.demo) {
+      html += '<div class="placeholder">离线样例演示：以下为项目内固定结果，未调用模型，不代表实时分析效果；本次不会写入标签或复核记录。</div>';
+    }
+
     html += `<div class="section-label"><span>历史信号库 · 过去 7 天</span></div>
       <div class="history-grid">${Object.keys(VOC_DATA.history7d).map((k) => {
         const h = VOC_DATA.history7d[k];
@@ -326,14 +332,20 @@
     return idx;
   }
 
-  async function runPipeline() {
+  async function runPipeline(demoMode) {
     if (state.running) return;
     state.running = true;
     const btn = $("#runBtn");
+    const demoBtn = $("#demoBtn");
     btn.disabled = true;
-    $(".btn-text", btn).textContent = "分析中…";
+    if (demoBtn) demoBtn.disabled = true;
+    $(".btn-text", btn).textContent = demoMode ? "演示中…" : "分析中…";
 
-    const batch = currentBatch();
+    const batch = demoMode ? VOC_DATA.batches.find((item) => item.id === "A") : currentBatch();
+    if (demoMode && state.batchId !== batch.id) {
+      state.batchId = batch.id;
+      renderBatchPicker();
+    }
     state.result = null;
     state.index = {};
     const statuses = {};
@@ -343,19 +355,24 @@
     $("#verdictBody").innerHTML = '<div class="placeholder">流水线运行中，等待上游输出…</div>';
 
     try {
-      state.result = await VOC_PIPELINE.runPipeline(batch, (stage, status, payload) => {
+      const onStage = (stage, status, payload) => {
         statuses[stage] = Object.assign({ status }, payload || {});
         setLed(stage, status, payload);
         renderAgentStack(statuses);
         if (status === "error") {
           $("#verdictBody").innerHTML = `<div class="placeholder err">${esc(stage)} 失败：${esc((payload && payload.message) || "")}</div>`;
         }
-      });
+      };
+      state.result = demoMode
+        ? await VOC_PIPELINE.runDemoPipeline(batch, onStage)
+        : await VOC_PIPELINE.runPipeline(batch, onStage);
       state.index = buildIndex(state.result);
       renderSourceList();
       renderVerdict();
-      if (collectNewSignals(state.result)) { renderLabels(); saveLabels(); }
-      if (collectReviews(state.result)) { renderReviews(); saveReviews(); }
+      if (!demoMode) {
+        if (collectNewSignals(state.result)) { renderLabels(); saveLabels(); }
+        if (collectReviews(state.result)) { renderReviews(); saveReviews(); }
+      }
       ["agent1", "agent2", "agent3"].forEach((s, i) => {
         const led = $(`.led[data-stage="${s}"]`);
         if (led && !led.classList.contains("is-error") && state.result && (i < 2 ? true : state.result.agent3)) {
@@ -368,6 +385,7 @@
       state.running = false;
       btn.disabled = false;
       $(".btn-text", btn).textContent = "采集并分析";
+      if (demoBtn) demoBtn.disabled = false;
       if (window.VOC_LAST_MODEL) $("#modelTag").textContent = window.VOC_LAST_MODEL;
     }
   }
@@ -850,7 +868,15 @@
 
   $("#reloadLabelsBtn").addEventListener("click", loadLabels);
   $("#reloadReviewsBtn").addEventListener("click", loadReviews);
-  $("#runBtn").addEventListener("click", runPipeline);
+  $("#runBtn").addEventListener("click", () => runPipeline(false));
+  const demoBtn = document.createElement("button");
+  demoBtn.id = "demoBtn";
+  demoBtn.type = "button";
+  demoBtn.className = "btn btn-eval";
+  demoBtn.title = "无需 API Key；展示固定样例结果，不调用模型";
+  demoBtn.innerHTML = '<span class="btn-glyph">▷</span><span class="btn-text">离线样例演示</span>';
+  $("#runBtn").before(demoBtn);
+  demoBtn.addEventListener("click", () => runPipeline(true));
   $("#runEvalBtn").addEventListener("click", () => runEval("testset-holdout.json", $("#runEvalBtn")));
 
   // Agent1 输入形态切换：默认单条（稳），批量用于压调用成本
